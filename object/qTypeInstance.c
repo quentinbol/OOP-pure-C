@@ -6,7 +6,7 @@
  * Free for personal and commercial use.
  **/
 
-#include "../qUtils.h"
+#include "../utils/qUtils.h"
 #include "qObject.h"
 
 /**
