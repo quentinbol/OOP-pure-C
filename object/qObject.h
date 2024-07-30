@@ -7,9 +7,14 @@
  **/
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef qObject_h
     #define qObject_h
+
+    #include <stdio.h>
+    #include <stdarg.h>
+    #include "../utils/qUtils.h"
 
     #ifndef __PTR_F0__
         typedef void (*ctor_t)(void *null__ptr); //-> ctor_t function pointer use as a constructor
@@ -42,6 +47,17 @@
         } ObjectClass;
     #endif
 
+    #ifndef __METHOD__
+        typedef void (*method_func_t)(void *data, va_list args);
+    #endif
+
+    #ifndef __METHOD_MAP__
+        typedef struct {
+            const char *method_name;
+            method_func_t method;
+        } MethodMap;
+    #endif
+
     #ifndef __OBJECT__
         /**
          * @brief The object structure.
@@ -53,8 +69,20 @@
         typedef struct __OBJECT__ {
             ObjectClass *class;
             void *data;
+            MethodMap *methods;
+            /**
+             * @brief function pointer to call method of the object.
+             * 
+             * @param obj The object that you want to call the method.
+             * @param method_name The name of the method that you want to call.
+             * @param ... The arguments that you want to pass to the method.
+             * 
+             */
+            void (*callMethod)(struct __OBJECT__ *obj, const char *method_name, ...);
         } Object;
     #endif
+
+    void callMethod(Object *obj, const char *method_name, ...);
 
     #ifndef __FIELD_OFFSET_MAP__
         /**
@@ -79,21 +107,24 @@
      * @param type The type of the object.
      * 
      */
-        #define __NEW__(class) ({ \
-                extern ObjectClass __##class##Class; \
-                Object *(obj) = (Object *)malloc(sizeof(Object)); \
-                if (obj != NULL) { \
-                    obj->class = &(__##class##Class); \
-                    obj->data = malloc(__##class##Class.size); \
-                    if (obj->data != NULL) { \
-                        __##class##Class.ctor(obj->data); \
-                    } else { \
-                        free(obj); \
-                        obj = NULL; \
-                    } \
+        
+#define __NEW__(type) ({ \
+            extern ObjectClass __##type##Class; \
+            Object *(obj) = (Object *)malloc(sizeof(Object)); \
+            if (obj != NULL) { \
+                obj->class = &(__##type##Class); \
+                obj->data = malloc(__##type##Class.size); \
+                obj->methods = __##type##Methods; \
+                obj->callMethod = &callMethod; \
+                if (obj->data != NULL) { \
+                    __##type##Class.ctor(obj->data); \
+                } else { \
+                    free(obj); \
+                    obj = NULL; \
                 } \
-                obj; \
-            })
+            } \
+            obj; \
+        })
     #endif
 
     #ifndef __DELETE__
@@ -264,6 +295,12 @@
                 obj; \
             })
     #endif
+
+    void __assign_field_value(void *field_ptr, const char *type_name, void *value_ptr);
+    void *__get_field_type_instance(const char* type_name);
+    const char* __get_field_type(Object *object, const char *field_name);
+    const char* __GetFieldType(const char* field_name, FieldOffsetMap *offsetMap);
+    size_t __GetFieldOffset(const char* field_name, FieldOffsetMap *offsetMap);
 
 #endif // qObject_h
     
